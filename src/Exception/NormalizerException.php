@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Waffle\Commons\Serializer\Exception;
 
+use JsonException;
 use LogicException;
 use ReflectionException;
+use Waffle\Commons\Contracts\Serializer\Exception\SerializerExceptionInterface;
 use Waffle\Commons\Utils\Exception\UnsupportedDtoShapeException;
 
 use function get_debug_type;
@@ -19,7 +21,7 @@ use function sprintf;
  * These are wiring or DTO-design mistakes, never client errors: it is a
  * `LogicException`, which the error handler renders as a `500`.
  */
-final class NormalizerException extends LogicException
+final class NormalizerException extends LogicException implements SerializerExceptionInterface
 {
     public static function missing(string $class): self
     {
@@ -42,5 +44,10 @@ final class NormalizerException extends LogicException
     public static function unbuildable(string $class, ReflectionException $previous): self
     {
         return new self(sprintf('Cannot instantiate "%s": %s', $class, $previous->getMessage()), 0, $previous);
+    }
+
+    public static function unencodable(string $class, JsonException $previous): self
+    {
+        return new self(sprintf('Cannot encode "%s" as JSON: %s', $class, $previous->getMessage()), 0, $previous);
     }
 }

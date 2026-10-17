@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace WaffleTests\Commons\Serializer;
 
+use JsonException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use stdClass;
+use Waffle\Commons\Contracts\Serializer\DtoSerializerInterface;
 use Waffle\Commons\Serializer\Exception\MalformedPayloadException;
 use Waffle\Commons\Serializer\Exception\NormalizerException;
 use Waffle\Commons\Serializer\Exception\PayloadTooLargeException;
@@ -17,6 +19,7 @@ use Waffle\Commons\Serializer\Serializer;
 use WaffleTests\Commons\Serializer\Compiled\CompiledNormalizers;
 use WaffleTests\Commons\Serializer\Fixture\Address;
 use WaffleTests\Commons\Serializer\Fixture\Blank;
+use WaffleTests\Commons\Serializer\Fixture\Contact;
 use WaffleTests\Commons\Serializer\Fixture\Marker;
 use WaffleTests\Commons\Serializer\Fixture\Order;
 use WaffleTests\Commons\Serializer\Fixture\Status;
@@ -115,5 +118,24 @@ final class SerializerTest extends AbstractTestCase
         $this->expectExceptionMessage('The normalizer for "' . Address::class . '" was given a "stdClass".');
 
         new Serializer($normalizers)->denormalize([], Address::class);
+    }
+
+    public function testIsTheContractsDtoSerializer(): void
+    {
+        static::assertInstanceOf(DtoSerializerInterface::class, new Serializer(new ShapeNormalizerProvider()));
+    }
+
+    public function testAValueJsonCannotEncodeIsANormalizerFailure(): void
+    {
+        try {
+            new Serializer(new ShapeNormalizerProvider())->serialize(new Contact("\xB1\x31", null));
+            static::fail('A string that is not UTF-8 cannot be encoded.');
+        } catch (NormalizerException $exception) {
+            static::assertStringStartsWith(
+                'Cannot encode "WaffleTests\\Commons\\Serializer\\Fixture\\Contact" as JSON: ',
+                $exception->getMessage(),
+            );
+            static::assertInstanceOf(JsonException::class, $exception->getPrevious());
+        }
     }
 }

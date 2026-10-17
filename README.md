@@ -11,7 +11,7 @@ Waffle Serializer Component
 ==========================
 
 > **Release:** _unreleased_ &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
-> **Status:** In development for `0.1.0-beta7` — roadmap `[API-02]` (RFC-016). The DTO normalizers are in, compiled per DTO at build time or interpreted in development. Still to come: the `serializer:compile` command, the `Accept` negotiation middleware, the DTO response converter and the kernel wiring. `data/`'s Hydrator stays DB-only.
+> **Status:** In development for `0.1.0-beta7` — roadmap `[API-02]` (RFC-016). In: the DTO normalizers (compiled per DTO at build time, or interpreted in development), `serializer:compile`, the `Accept` negotiation middleware, and the contracts' `DtoSerializerInterface`, through which the framework kernel hydrates `#[Dto]` arguments and writes the DTOs a controller returns. `data/`'s Hydrator stays DB-only.
 
 Compiled, reflection-free DTO serialization and Accept-header content negotiation for the Waffle framework.
 
@@ -51,6 +51,26 @@ Both run every check through `Normalizer\Payload`, so they accept, reject and wo
 suite holds them to it on every case. `NormalizerCompiler::compile()` returns the generated files (file name →
 source), one class per file, deterministic, and written to pass Mago's linter and analyzer like hand-written code.
 
+**Build and load.** `bin/waffle serializer:compile` (`Command\CompileCommand`, registered in `bin/waffle` next to the
+console commands) scans `--source` (default `src`) for `#[Dto]` classes and writes their normalizers, one file per
+class and each atomically, to `--output` (default `var/cache/serializer`); a file a previous run generated for a
+DTO that no longer exists is removed, any other file is left alone. At boot,
+`Normalizer\CompiledNormalizerLoader::load()` returns the compiled index when `WAFFLE_AOT=1` and the files load,
+backed by the interpreted provider for any DTO the build did not cover (`Normalizer\FallbackNormalizerProvider`);
+otherwise — the flag off, the files missing or broken — the interpreted provider, with a log line saying why.
+Every successful load also logs that the build is not checked against the current code: re-run the command after
+any change to a DTO, as for `container:compile`.
+
+## 🤝 Content negotiation
+
+`Middleware\ContentNegotiationMiddleware` answers the one question a JSON-only API has to settle: does the client
+accept `application/json`? It reads the `Accept` header as RFC 9110 defines it — the most specific matching range
+decides (`application/json`, then `application/*`, then `*/*`), a weight of 0 excludes — and refuses a request that
+rules JSON out with a 406 before any controller runs. Every response that passes varies on `Accept`. No header
+accepts anything. Mount it inside the error-handler middleware, and only in front of JSON routes: it refuses a
+request that asks for another type, such as a `text/event-stream` subscription or an HTML page. Other
+representations are post-v1.
+
 ## 🚦 Errors
 
 | Exception | Status | When |
@@ -59,6 +79,7 @@ source), one class per file, deterministic, and written to pass Mago's linter an
 | `Exception\MalformedPayloadException` | 400 | The body is not JSON, or nests deeper than the codec's limit (64 by default). |
 | `Exception\PayloadTooLargeException` | 413 | The body is longer than the codec's limit (1 MiB by default); it is not parsed. |
 | `Exception\NormalizerException` | 500 | A class has no normalizer, or is a `#[Dto]` the serializer cannot represent: a wiring mistake. |
+| `Exception\NotAcceptableException` | 406 | The request's `Accept` header rules JSON out (`ContentNegotiationMiddleware`). |
 
 The error handler renders them; a 422 shows the message and the field, as for any validation failure.
 

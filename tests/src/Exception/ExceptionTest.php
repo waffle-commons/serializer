@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace WaffleTests\Commons\Serializer\Exception;
 
+use JsonException;
 use LogicException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use ReflectionException;
 use stdClass;
 use Waffle\Commons\Contracts\Exception\Validation\ValidationExceptionInterface;
+use Waffle\Commons\Contracts\Serializer\Exception\SerializerExceptionInterface;
 use Waffle\Commons\Serializer\Exception\InvalidPayloadException;
+use Waffle\Commons\Serializer\Exception\MalformedPayloadException;
 use Waffle\Commons\Serializer\Exception\NormalizerException;
+use Waffle\Commons\Serializer\Exception\NotAcceptableException;
+use Waffle\Commons\Serializer\Exception\PayloadTooLargeException;
 use Waffle\Commons\Utils\Exception\UnsupportedDtoShapeException;
 use WaffleTests\Commons\Serializer\AbstractTestCase;
 
@@ -54,5 +59,20 @@ final class ExceptionTest extends AbstractTestCase
             $unbuildable->getMessage(),
         );
         static::assertSame($reflection, $unbuildable->getPrevious());
+    }
+
+    public function testEveryExceptionIsASerializerException(): void
+    {
+        $exceptions = [
+            new InvalidPayloadException('Too small.'),
+            new MalformedPayloadException(new JsonException('Syntax error')),
+            new PayloadTooLargeException(1024),
+            NormalizerException::missing(stdClass::class),
+            new NotAcceptableException('text/html'),
+        ];
+
+        foreach ($exceptions as $exception) {
+            static::assertInstanceOf(SerializerExceptionInterface::class, $exception);
+        }
     }
 }

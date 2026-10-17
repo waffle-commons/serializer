@@ -7,6 +7,7 @@ namespace Waffle\Commons\Serializer\Exception;
 use InvalidArgumentException;
 use Throwable;
 use Waffle\Commons\Contracts\Exception\Validation\ValidationExceptionInterface;
+use Waffle\Commons\Contracts\Serializer\Exception\SerializerExceptionInterface;
 
 /**
  * A payload that is valid JSON but does not fit the DTO: a missing or mistyped
@@ -16,7 +17,9 @@ use Waffle\Commons\Contracts\Exception\Validation\ValidationExceptionInterface;
  * as an RFC 7807 `422` and shows its message and its field. The field is a path
  * from the payload root: `email`, `shipping.city`, `lines[2].quantity`.
  */
-final class InvalidPayloadException extends InvalidArgumentException implements ValidationExceptionInterface
+final class InvalidPayloadException extends InvalidArgumentException implements
+    ValidationExceptionInterface,
+    SerializerExceptionInterface
 {
     public function __construct(
         string $message,

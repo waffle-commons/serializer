@@ -21,7 +21,20 @@ Released in lockstep with the Waffle Commons umbrella tag.
 - `Json\JsonCodec` — bounded decoding (1 MiB and depth 64 by default) and UTF-8 encoding that keeps float fractions.
 - Exceptions mapped by the error handler: `InvalidPayloadException` (422, with the field path such as
   `lines[2].quantity`), `MalformedPayloadException` (400), `PayloadTooLargeException` (413),
-  `NormalizerException` (500).
+  `NormalizerException` (500), `NotAcceptableException` (406).
+- `Command\CompileCommand` — `serializer:compile [--source=…] [--output=…] [--namespace=…]` scans for `#[Dto]`
+  classes and writes their compiled normalizers atomically; it removes only the files a previous run generated.
+- `Normalizer\CompiledNormalizerLoader` — the `WAFFLE_AOT=1` fast path: the compiled index, backed by the
+  interpreted provider (`Normalizer\FallbackNormalizerProvider`) for any DTO the build did not cover; the
+  interpreted provider, with a logged reason, whenever the flag is off or the build is missing or broken.
+- `Middleware\ContentNegotiationMiddleware` — `Accept` negotiation for a JSON API (RFC 9110 precedence and
+  weights): a request that rules JSON out gets a 406, every other response varies on `Accept`.
+- `Serializer` implements the contracts' `DtoSerializerInterface`, through which the framework's argument
+  resolver and response converter, and a queue driver, use it; every exception implements
+  `SerializerExceptionInterface`. `serialize()` reports a value JSON cannot encode as a `NormalizerException`
+  instead of a raw `JsonException`.
 
 ### Dependencies
 - Requires `waffle-commons/utils` (the DTO-shape reader); the `mago guard` perimeter permits it.
+- `psr/log`, `psr/http-message`, `psr/http-server-middleware` and `psr/http-server-handler` are direct
+  requirements; `nyholm/psr7` is a development dependency for the component's own tests.

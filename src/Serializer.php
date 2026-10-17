@@ -6,6 +6,7 @@ namespace Waffle\Commons\Serializer;
 
 use JsonException;
 use stdClass;
+use Waffle\Commons\Contracts\Serializer\DtoSerializerInterface;
 use Waffle\Commons\Serializer\Exception\InvalidPayloadException;
 use Waffle\Commons\Serializer\Exception\MalformedPayloadException;
 use Waffle\Commons\Serializer\Exception\NormalizerException;
@@ -27,9 +28,12 @@ use Waffle\Commons\Serializer\Normalizer\NormalizerProviderInterface;
  * `serializer:compile` generates (reflection-free) in production, or a
  * `ShapeNormalizerProvider` (reflection, no build step) in development.
  *
+ * It implements the contracts' `DtoSerializerInterface`, through which the
+ * framework's argument resolver and response converter, and a queue driver, use it.
+ *
  * Stateless: safe to share across FrankenPHP worker requests.
  */
-final readonly class Serializer
+final readonly class Serializer implements DtoSerializerInterface
 {
     public function __construct(
         private NormalizerProviderInterface $normalizers,
@@ -41,6 +45,7 @@ final readonly class Serializer
      *
      * @throws NormalizerException When the class is a `#[Dto]` the serializer cannot represent.
      */
+    #[\Override]
     public function supports(string $class): bool
     {
         return $this->normalizers->get($class) !== null;
@@ -71,6 +76,7 @@ final readonly class Serializer
      * @throws InvalidPayloadException When a field is missing, mistyped or rejected by the DTO.
      * @throws NormalizerException     When the class has no normalizer.
      */
+    #[\Override]
     public function denormalize(array $data, string $class): object
     {
         $dto = $this->normalizer($class)->denormalize($data);
@@ -84,14 +90,19 @@ final readonly class Serializer
     /**
      * The DTO as JSON. A DTO without readable properties is `{}`.
      *
-     * @throws NormalizerException When the object's class has no normalizer.
-     * @throws JsonException       When a value cannot be encoded.
+     * @throws NormalizerException When the object's class has no normalizer, or a value cannot be encoded (a
+     *                             string that is not UTF-8).
      */
+    #[\Override]
     public function serialize(object $dto): string
     {
         $data = $this->normalize($dto);
 
-        return $this->codec->encode($data === [] ? new stdClass() : $data);
+        try {
+            return $this->codec->encode($data === [] ? new stdClass() : $data);
+        } catch (JsonException $exception) {
+            throw NormalizerException::unencodable($dto::class, $exception);
+        }
     }
 
     /**
@@ -108,6 +119,7 @@ final readonly class Serializer
      * @throws InvalidPayloadException   When it is not an object or does not fit the DTO (422).
      * @throws NormalizerException       When the class has no normalizer.
      */
+    #[\Override]
     public function deserialize(string $json, string $class): object
     {
         return $this->denormalize($this->codec->decodeObject($json), $class);
