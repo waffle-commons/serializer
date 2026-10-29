@@ -10,8 +10,8 @@
 Waffle Serializer Component
 ==========================
 
-> **Release:** _unreleased_ &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
-> **Status:** In development for `0.1.0-beta7` — roadmap `[API-02]` (RFC-016). In: the DTO normalizers (compiled per DTO at build time, or interpreted in development), `serializer:compile`, the `Accept` negotiation middleware, and the contracts' `DtoSerializerInterface`, through which the framework kernel hydrates `#[Dto]` arguments and writes the DTOs a controller returns. `data/`'s Hydrator stays DB-only.
+> **Release:** `0.1.0-beta7` &nbsp;|&nbsp; [`CHANGELOG.md`](./CHANGELOG.md)
+> **Status:** First released in `0.1.0-beta7` — roadmap `[API-02]` (RFC-016). In: the DTO normalizers (compiled per DTO at build time, or interpreted in development), `serializer:compile`, the `Accept` negotiation middleware, and the contracts' `DtoSerializerInterface`, through which the framework kernel hydrates `#[Dto]` arguments and writes the DTOs a controller returns. `data/`'s Hydrator stays DB-only.
 
 Compiled, reflection-free DTO serialization and Accept-header content negotiation for the Waffle framework.
 
